@@ -2,10 +2,10 @@ import streamlit as st
 import pandas as pd
 import urllib.parse
 
-# 1. Configuración de la página (DEBE IR PRIMERO)
+# 1. Configuración de la página
 st.set_page_config(page_title="Control & Gestión de Cartera", layout="wide")
 
-# 2. CSS Maestro (Modo Oscuro, Textos Blancos y Estilo de Logo)
+# 2. CSS Maestro (Modo Oscuro y Textos Blancos)
 st.markdown(
     """
     <style>
@@ -24,13 +24,12 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# 3. Función para los links de WhatsApp
+# 3. Datos y Funciones
 def crear_link_whatsapp(fila):
     texto = f"Hola {fila['Cliente']}, le recordamos que su cuota del {fila['Vehículo']} vence el {fila['Vencimiento']}. Saludos de Automotora Otormín."
     texto_url = urllib.parse.quote(texto)
     return f"https://wa.me/59899000000?text={texto_url}"
 
-# 4. Datos de Ejemplo (20 Clientes)
 data = {
     "Cliente": [
         "Federico Rossi", "María Gonzalez", "Juan Castro", "Ana Ledesma", "Roberto Peña",
@@ -61,59 +60,46 @@ data = {
 df = pd.DataFrame(data)
 df["Acción"] = df.apply(crear_link_whatsapp, axis=1)
 
-# 5. Menú Lateral (Sidebar)
+# 4. Sidebar
 with st.sidebar:
     st.markdown("### MENÚ")
-    opcion = st.radio(
-        "Navegación:",
-        ["📊 Tablero de Control", "🔍 Buscador Inteligente", "➕ Nuevo Registro"],
-        index=0
-    )
+    opcion = st.radio("Navegación:", ["📊 Tablero de Control", "🔍 Buscador", "➕ Nuevo Registro"])
     st.write("---")
     st.markdown("<p style='color: #55acee; font-size: 0.8rem;'>Sistema v1.1 | 2026 © Automotora Otormín</p>", unsafe_allow_html=True)
 
-# 6. Encabezado (Logo y Título)
+# 5. Encabezado
 col1, col2, col3 = st.columns([1, 1.5, 1])
 with col2:
-    try:
-        st.image("logo.png", use_container_width=True)
-    except:
-        st.warning("Falta logo.png")
+    try: st.image("logo.png", use_container_width=True)
+    except: pass
     st.markdown('<div class="titulo-central">CONTROL & GESTIÓN DE CARTERA</div>', unsafe_allow_html=True)
 
-# 7. Lógica de Secciones
-if opcion == "📊 Tablero de Control":
+# 6. Tablero
+if "Tablero" in opcion:
     st.write("---")
     c1, c2, c3 = st.columns(3)
-    with c1: st.metric("EN MORA", "5 Clientes", "-$2,210", delta_color="inverse")
-    with c2: st.metric("A COBRAR (7 DÍAS)", "4 Clientes", "$1,850")
-    with c3: st.metric("TOTAL CARTERA", "20 Registros", "$15,400")
+    c1.metric("EN MORA", "5 Clientes", "-$2,210", delta_color="inverse")
+    c2.metric("A COBRAR (7 DÍAS)", "4 Clientes", "$1,850")
+    c3.metric("TOTAL CARTERA", "20 Registros", "$15,400")
 
     st.markdown("### 📋 Gestión de Cartera y Cobranza")
 
-    # Función para dar color a las celdas de Estado
+    # Función de color corregida para Pandas nuevo
     def color_estado(val):
-        if val == "VENCIDO":
-            return 'background-color: #701010; color: white'
-        elif val == "AL DÍA":
-            return 'background-color: #155123; color: white'
+        if val == "VENCIDO": return 'background-color: #701010; color: white'
+        if val == "AL DÍA": return 'background-color: #155123; color: white'
         return ''
 
-    # Aplicamos estilo
-    df_estilado = df.style.applymap(color_estado, subset=['Estado'])
+    # USAMOS .map() EN LUGAR DE .applymap()
+    df_estilado = df.style.map(color_estado, subset=['Estado'])
 
-    # Mostramos Tabla
     st.dataframe(
         df_estilado, 
         use_container_width=True, 
         hide_index=True,
         column_config={
-            "Acción": st.column_config.LinkColumn("Enviar WhatsApp", display_text="📲 Enviar Mensaje"),
+            "Acción": st.column_config.LinkColumn("WhatsApp", display_text="📲 Enviar Mensaje"),
             "Saldo (USD)": st.column_config.NumberColumn(format="$ %d")
         }
     )
-    st.info("💡 Estados: Rojo (Vencido) | Verde (Al día). Haz clic en 'Enviar Mensaje' para contactar al cliente.")
-
-elif opcion == "🔍 Buscador Inteligente":
-    st.subheader("🔍 Buscador de Clientes")
-    # ... resto del código ...
+    st.info("💡 Haz clic en 'Enviar Mensaje' para abrir WhatsApp con un recordatorio automático.")
