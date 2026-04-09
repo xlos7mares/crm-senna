@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import urllib.parse
 
 # 1. Configuración de la página
 st.set_page_config(page_title="Control & Gestión de Cartera", layout="wide")
@@ -23,7 +24,16 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# 3. Datos de Ejemplo (20 Clientes)
+# 3. Función para generar el link de WhatsApp
+def crear_link_whatsapp(fila):
+    # Mensaje predefinido
+    texto = f"Hola {fila['Cliente']}, le recordamos que su cuota del {fila['Vehículo']} vence el {fila['Vencimiento']}. Saludos de Automotora Otormín."
+    # Codificamos el texto para URL
+    texto_url = urllib.parse.quote(texto)
+    # Retornamos el link (usamos un número ficticio o el del cliente si lo tuvieras)
+    return f"https://wa.me/59899000000?text={texto_url}"
+
+# 4. Datos de Ejemplo (20 Clientes)
 data = {
     "Cliente": [
         "Federico Rossi", "María Gonzalez", "Juan Castro", "Ana Ledesma", "Roberto Peña",
@@ -37,7 +47,6 @@ data = {
         "Honda Civic", "Nissan Frontier", "Jeep Renegade", "BMW 320i", "Ford Ka",
         "Citroen C3", "VW Amarok", "Toyota Corolla", "Fiat Toro", "Chevrolet Cruze"
     ],
-    "Cuota N°": [5, 10, 3, 12, 8, 2, 6, 1, 9, 4, 7, 11, 5, 3, 8, 10, 2, 6, 4, 12],
     "Vencimiento": [
         "2026-03-30", "2026-04-10", "2026-04-15", "2026-03-25", "2026-05-01",
         "2026-04-20", "2026-03-28", "2026-04-05", "2026-04-12", "2026-04-18",
@@ -49,15 +58,16 @@ data = {
         "AL DÍA", "VENCIDO", "AL DÍA", "AL DÍA", "AL DÍA",
         "VENCIDO", "AL DÍA", "AL DÍA", "AL DÍA", "AL DÍA",
         "AL DÍA", "VENCIDO", "AL DÍA", "AL DÍA", "AL DÍA"
-    ],
-    "Saldo (USD)": [450, 0, 0, 320, 0, 0, 280, 0, 0, 0, 550, 0, 0, 0, 0, 0, 610, 0, 0, 0]
+    ]
 }
 df = pd.DataFrame(data)
 
-# 4. Sidebar (AQUÍ SE DEFINE 'opcion')
+# Creamos la columna de acción dinámicamente
+df["Acción"] = df.apply(crear_link_whatsapp, axis=1)
+
+# 5. Sidebar
 with st.sidebar:
     st.markdown("### MENÚ")
-    # Es muy importante que esta variable se llame EXACTAMENTE 'opcion'
     opcion = st.radio(
         "Navegación:",
         ["📊 Tablero de Control", "🔍 Buscador Inteligente", "➕ Nuevo Registro"],
@@ -66,7 +76,7 @@ with st.sidebar:
     st.write("---")
     st.markdown("<p style='color: #55acee; font-size: 0.8rem;'>Sistema v1.1 | 2026 © Automotora Otormín</p>", unsafe_allow_html=True)
 
-# 5. Encabezado Principal
+# 6. Encabezado Principal
 col1, col2, col3 = st.columns([1, 1.5, 1])
 with col2:
     try:
@@ -75,32 +85,30 @@ with col2:
         pass
     st.markdown('<div class="titulo-central">CONTROL & GESTIÓN DE CARTERA</div>', unsafe_allow_html=True)
 
-# 6. Lógica de Secciones
+# 7. Lógica de Secciones
 if opcion == "📊 Tablero de Control":
     st.write("---")
-    # Indicadores
     c1, c2, c3 = st.columns(3)
     with c1: st.metric("EN MORA", "5 Clientes", "-$2,210", delta_color="inverse")
     with c2: st.metric("A COBRAR (7 DÍAS)", "4 Clientes", "$1,850")
     with c3: st.metric("TOTAL CARTERA", "20 Registros", "$15,400")
 
-    # Alertas
-    st.markdown("### ⚠️ Acciones de Cobranza Prioritaria")
-    vencidos = df[df["Estado"] == "VENCIDO"]
-    for _, row in vencidos.iterrows():
-        st.error(f"**VENCIDO** | {row['Cliente']} - {row['Vehículo']} (Vence: {row['Vencimiento']})")
-
-    # Tabla Completa
-    st.write("---")
-    st.markdown("### 📋 Listado Completo de Cartera")
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.markdown("### 📋 Gestión de Cartera y Cobranza")
     
-    st.download_button("📥 Descargar Reporte Excel", data=df.to_csv().encode('utf-8'), file_name='cartera.csv')
-
-elif opcion == "🔍 Buscador Inteligente":
-    st.subheader("Buscador de Clientes")
-    # Aquí puedes agregar más lógica luego
-
-elif opcion == "➕ Nuevo Registro":
-    st.subheader("Cargar Nuevo Cliente")
-    # Aquí puedes agregar el formulario luego
+    # Configuración avanzada de la tabla
+    st.dataframe(
+        df, 
+        use_container_width=True, 
+        hide_index=True,
+        column_config={
+            "Acción": st.column_config.LinkColumn(
+                "Enviar WhatsApp",
+                help="Haz clic para abrir el chat con el cliente",
+                validate=r"^https://wa\.me/.*",
+                display_text="📲 Enviar Mensaje"
+            ),
+            "Estado": st.column_config.TextColumn("Estado")
+        }
+    )
+    
+    st.info("💡 Haz clic en 'Enviar Mensaje' para simular el aviso de cobro al cliente.")
