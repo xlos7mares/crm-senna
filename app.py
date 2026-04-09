@@ -1,84 +1,88 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 
-# 1. Configuración de la interfaz (se adapta a celulares)
+# 1. Configuración de la interfaz
 st.set_page_config(page_title="CRM Otormín", page_icon="🚗", layout="centered")
 
-# 2. Conexión a la Base de Datos (SQLite)
-# Esto crea un archivo llamado otormin_data.db donde se guarda todo
+# 2. Conexión a la Base de Datos
 conn = sqlite3.connect('otormin_data.db', check_same_thread=False)
 c = conn.cursor()
 
-def crear_tabla():
+def inicializar_sistema():
+    # Crear tabla si no existe
     c.execute('''CREATE TABLE IF NOT EXISTS clientes 
                  (nombre TEXT, telefono TEXT, vehiculo TEXT, cuota REAL, vencimiento DATE)''')
     conn.commit()
+    
+    # Cargar DATOS DE EJEMPLO si la tabla está vacía
+    c.execute("SELECT COUNT(*) FROM clientes")
+    if c.fetchone()[0] == 0:
+        hoy = datetime.now().date()
+        datos_ejemplo = [
+            ('Juan Pérez', '59899123456', 'Toyota Hilux 2022', 450.0, (hoy - timedelta(days=2)).strftime('%Y-%m-%d')),
+            ('María Rodríguez', '59898765432', 'VW Gol Trend', 210.0, (hoy + timedelta(days=1)).strftime('%Y-%m-%d')),
+            ('Carlos Sosa', '59891111111', 'Fiat Toro Diesel', 380.0, (hoy + timedelta(days=5)).strftime('%Y-%m-%d')),
+            ('Elena Martínez', '59892222222', 'Ford Ranger XLT', 520.0, (hoy + timedelta(days=20)).strftime('%Y-%m-%d'))
+        ]
+        c.executemany("INSERT INTO clientes VALUES (?,?,?,?,?)", datos_ejemplo)
+        conn.commit()
 
-crear_tabla()
+inicializar_sistema()
 
 # 3. Diseño de la Aplicación
 st.title("🚗 Automotora Otormín")
-st.markdown("### Sistema de Gestión de Cuotas")
+st.markdown("### Gestión Inteligente de Cobranzas")
 
-# Menú lateral para navegar
-menu = ["🔔 Tablero de Vencimientos", "➕ Registrar Cliente", "📊 Base de Datos Completa"]
-choice = st.sidebar.selectbox("Seleccione una opción", menu)
+menu = ["🔔 Tablero de Vencimientos", "➕ Registrar Nuevo", "📊 Lista Completa"]
+choice = st.sidebar.selectbox("Menú de Navegación", menu)
 
-# --- OPCIÓN: REGISTRAR NUEVO CLIENTE ---
-if choice == "➕ Registrar Cliente":
-    st.subheader("Registrar Nuevo Vencimiento")
-    with st.form("nuevo_registro"):
-        nombre = st.text_input("Nombre Completo del Cliente")
-        tel = st.text_input("Teléfono (Ej: 59899123456)")
-        vehiculo = st.text_input("Vehículo / Modelo")
-        cuota = st.number_input("Monto de la Cuota (USD / $)", min_value=0.0)
-        fecha = st.date_input("Fecha de Vencimiento")
-        
-        boton_guardar = st.form_submit_button("Guardar en el Sistema")
-        
-        if boton_guardar:
-            if nombre and tel:
-                c.execute("INSERT INTO clientes VALUES (?,?,?,?,?)", (nombre, tel, vehiculo, cuota, fecha))
-                conn.commit()
-                st.success(f"¡Excelente! El vencimiento de {nombre} ha sido guardado.")
-            else:
-                st.error("Por favor, completa el nombre y el teléfono.")
-
-# --- OPCIÓN: TABLERO DE VENCIMIENTOS (ALERTAS) ---
-elif choice == "🔔 Tablero de Vencimientos":
-    st.subheader("⚠️ Próximos Vencimientos (7 días)")
+if choice == "🔔 Tablero de Vencimientos":
+    st.subheader("⚠️ Alertas de Cobro (Próximos 7 días)")
     df = pd.read_sql_query("SELECT * FROM clientes", conn)
     
     if not df.empty:
         df['vencimiento'] = pd.to_datetime(df['vencimiento'])
         hoy = datetime.now()
         
-        # Filtramos los que vencen pronto (en los próximos 7 días o ya vencidos)
-        proximos = df[df['vencimiento'] <= (hoy + pd.Timedelta(days=7))]
+        # Filtro: vencidos o por vencer en 7 días
+        alertas = df[df['vencimiento'] <= (hoy + timedelta(days=7))]
         
-        if not proximos.empty:
-            for i, r in proximos.iterrows():
-                with st.expander(f"📌 {r['nombre']} - Vence: {r['vencimiento'].date()}"):
+        if not alertas.empty:
+            for i, r in alertas.iterrows():
+                # Color rojo si ya pasó, naranja si es futuro
+                dias_restantes = (r['vencimiento'] - hoy).days + 1
+                estado = "🔴 VENCIDO" if dias_restantes < 0 else f"🟠 Vence en {dias_restantes} días"
+                
+                with st.expander(f"{estado} | {r['nombre']}"):
                     st.write(f"**Vehículo:** {r['vehiculo']}")
-                    st.write(f"**Cuota:** ${r['cuota']}")
+                    st.write(f"**Cuota:** USD {r['cuota']}")
+                    st.write(f"**Fecha Límite:** {r['vencimiento'].date()}")
                     
-                    # Lógica de WhatsApp
-                    mensaje_wa = f"Hola {r['nombre']}, te recordamos el vencimiento de tu cuota del {r['vehiculo']} por un valor de ${r['cuota']}. Saludos, Automotora Otormín."
-                    url_wa = f"https://wa.me/{r['tel']}?text={mensaje_wa.replace(' ', '%20')}"
+                    # Link de WhatsApp con mensaje pro
+                    mensaje = f"Hola {r['nombre']}, te saludamos de Automotora Otormín. Te recordamos el vencimiento de tu cuota del {r['vehiculo']} por USD {r['cuota']}. ¿Podrías confirmarnos el pago? Gracias."
+                    url_wa = f"https://wa.me/{r['telefono']}?text={mensaje.replace(' ', '%20')}"
                     
-                    st.markdown(f"**[📲 Enviar Recordatorio por WhatsApp]({url_wa})**")
+                    st.markdown(f"**[📲 ENVIAR RECORDATORIO WHATSAPP]({url_wa})**")
         else:
-            st.info("No hay vencimientos críticos para esta semana. ¡Todo al día!")
-    else:
-        st.warning("Aún no hay clientes registrados en la base de datos.")
+            st.success("✅ No hay cobros pendientes para esta semana.")
 
-# --- OPCIÓN: VER TODO ---
-elif choice == "📊 Base de Datos Completa":
-    st.subheader("Listado General de Clientes")
-    df_completo = pd.read_sql_query("SELECT * FROM clientes", conn)
-    if not df_completo.empty:
-        st.dataframe(df_completo)
-    else:
-        st.info("No hay datos para mostrar.")
+elif choice == "➕ Registrar Nuevo":
+    st.subheader("Cargar nuevo plan de cuotas")
+    with st.form("form"):
+        col1, col2 = st.columns(2)
+        nombre = col1.text_input("Nombre Cliente")
+        tel = col2.text_input("Celular (Ej: 598...)")
+        vehi = col1.text_input("Vehículo")
+        monto = col2.number_input("Monto Cuota", min_value=0.0)
+        fec = st.date_input("Fecha Vencimiento")
+        if st.form_submit_button("Guardar Registro"):
+            c.execute("INSERT INTO clientes VALUES (?,?,?,?,?)", (nombre, tel, vehi, monto, fec))
+            conn.commit()
+            st.success("Guardado correctamente.")
+
+elif choice == "📊 Lista Completa":
+    st.subheader("Historial General")
+    df_all = pd.read_sql_query("SELECT * FROM clientes ORDER BY vencimiento ASC", conn)
+    st.dataframe(df_all, use_container_width=True)
