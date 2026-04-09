@@ -1,10 +1,29 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
 
-# --- (Mantén tu configuración de página y CSS anterior aquí) ---
+# 1. Configuración de la página
+st.set_page_config(page_title="Control & Gestión de Cartera", layout="wide")
 
-# 1. Simulación de Datos (20 Clientes)
+# 2. CSS Maestro (Modo Oscuro y Textos Blancos)
+st.markdown(
+    """
+    <style>
+        .stApp { background-color: #0E1117; color: white; }
+        [data-testid="stSidebar"] { background-color: #161B22; }
+        [data-testid="stSidebar"] * { color: white !important; }
+        .titulo-central {
+            text-align: center;
+            color: white;
+            font-size: 2.2rem;
+            font-weight: bold;
+            margin-top: -20px;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# 3. Datos de Ejemplo (20 Clientes)
 data = {
     "Cliente": [
         "Federico Rossi", "María Gonzalez", "Juan Castro", "Ana Ledesma", "Roberto Peña",
@@ -31,60 +50,57 @@ data = {
         "VENCIDO", "AL DÍA", "AL DÍA", "AL DÍA", "AL DÍA",
         "AL DÍA", "VENCIDO", "AL DÍA", "AL DÍA", "AL DÍA"
     ],
-    "Saldo Pendiente (USD)": [450, 0, 0, 320, 0, 0, 280, 0, 0, 0, 550, 0, 0, 0, 0, 0, 610, 0, 0, 0]
+    "Saldo (USD)": [450, 0, 0, 320, 0, 0, 280, 0, 0, 0, 550, 0, 0, 0, 0, 0, 610, 0, 0, 0]
 }
-
 df = pd.DataFrame(data)
 
-# --- (Aquí va la parte de Logo y Título que ya tienes) ---
+# 4. Sidebar (AQUÍ SE DEFINE 'opcion')
+with st.sidebar:
+    st.markdown("### MENÚ")
+    # Es muy importante que esta variable se llame EXACTAMENTE 'opcion'
+    opcion = st.radio(
+        "Navegación:",
+        ["📊 Tablero de Control", "🔍 Buscador Inteligente", "➕ Nuevo Registro"],
+        index=0
+    )
+    st.write("---")
+    st.markdown("<p style='color: #55acee; font-size: 0.8rem;'>Sistema v1.1 | 2026 © Automotora Otormín</p>", unsafe_allow_html=True)
 
-# 2. Lógica del Tablero
+# 5. Encabezado Principal
+col1, col2, col3 = st.columns([1, 1.5, 1])
+with col2:
+    try:
+        st.image("logo.png", use_container_width=True)
+    except:
+        pass
+    st.markdown('<div class="titulo-central">CONTROL & GESTIÓN DE CARTERA</div>', unsafe_allow_html=True)
+
+# 6. Lógica de Secciones
 if opcion == "📊 Tablero de Control":
     st.write("---")
-    
-    # KPIs Superiores
+    # Indicadores
     c1, c2, c3 = st.columns(3)
-    with c1:
-        st.metric("EN MORA", "5 Clientes", "-$2,210", delta_color="inverse")
-    with c2:
-        st.metric("A COBRAR (7 DÍAS)", "4 Clientes", "$1,850")
-    with c3:
-        st.metric("TOTAL CARTERA", "20 Registros", "$15,400")
+    with c1: st.metric("EN MORA", "5 Clientes", "-$2,210", delta_color="inverse")
+    with c2: st.metric("A COBRAR (7 DÍAS)", "4 Clientes", "$1,850")
+    with c3: st.metric("TOTAL CARTERA", "20 Registros", "$15,400")
 
+    # Alertas
     st.markdown("### ⚠️ Acciones de Cobranza Prioritaria")
-    
-    # Filtramos solo los vencidos para las alertas rápidas
     vencidos = df[df["Estado"] == "VENCIDO"]
     for _, row in vencidos.iterrows():
-        st.error(f"**VENCIDO** | {row['Cliente']} - {row['Vehículo']} (Vence: {row['Vencimiento']}) - Saldo: ${row['Saldo Pendiente (USD)']}")
+        st.error(f"**VENCIDO** | {row['Cliente']} - {row['Vehículo']} (Vence: {row['Vencimiento']})")
 
+    # Tabla Completa
     st.write("---")
     st.markdown("### 📋 Listado Completo de Cartera")
+    st.dataframe(df, use_container_width=True, hide_index=True)
     
-    # Mostramos la tabla interactiva
-    # Agregamos un buscador rápido arriba de la tabla
-    busqueda = st.text_input("Filtrar por nombre o vehículo:", "")
-    
-    if busqueda:
-        df_filtrado = df[df['Cliente'].str.contains(busqueda, case=False) | df['Vehículo'].str.contains(busqueda, case=False)]
-    else:
-        df_filtrado = df
+    st.download_button("📥 Descargar Reporte Excel", data=df.to_csv().encode('utf-8'), file_name='cartera.csv')
 
-    # Estilizar la tabla para que se vea bien en modo oscuro
-    st.dataframe(
-        df_filtrado, 
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "Saldo Pendiente (USD)": st.column_config.NumberColumn(format="$ %d"),
-            "Estado": st.column_config.TextColumn("Estado", help="Situación del pago")
-        }
-    )
+elif opcion == "🔍 Buscador Inteligente":
+    st.subheader("Buscador de Clientes")
+    # Aquí puedes agregar más lógica luego
 
-    # Botón para descargar reporte (para que vea que es profesional)
-    st.download_button(
-        label="📥 Descargar Reporte Excel",
-        data=df.to_csv().encode('utf-8'),
-        file_name='cartera_otormin.csv',
-        mime='text/csv',
-    )
+elif opcion == "➕ Nuevo Registro":
+    st.subheader("Cargar Nuevo Cliente")
+    # Aquí puedes agregar el formulario luego
