@@ -6,65 +6,51 @@ from datetime import datetime
 import PIL.Image as Image
 
 # 1. CONFIGURACIÓN DE PÁGINA
-st.set_page_config(
-    page_title="CRM SENNA 2026",
-    page_icon="🏎️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="CRM SENNA 2026", layout="wide", initial_sidebar_state="expanded")
 
-# 2. ESTADO DE SESIÓN
+# 2. SESIÓN Y DATOS
 if "logueado" not in st.session_state:
     st.session_state["logueado"] = False
 
-# --- ESTILOS VISUALES (Basados en tus capturas) ---
-st.markdown("""
-    <style>
-        .stApp { background-color: #0E1117; color: white; }
-        [data-testid="stSidebar"] { background-color: #161B22; min-width: 260px !important; }
-        .card {
-            background-color: #1E2329;
-            padding: 20px;
-            border-radius: 10px;
-            border-top: 4px solid #55acee;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .titulo-central {
-            text-align: center;
-            font-size: 2.2rem;
-            font-weight: bold;
-            color: white;
-        }
-    </style>
-""", unsafe_allow_html=True)
+@st.cache_data
+def cargar_datos():
+    data = {
+        "Cliente": ["Federico Rossi", "María Gonzalez", "Juan Castro", "Ana Ledesma", "Roberto Peña"],
+        "Vehículo": ["Mercedes Benz A200", "Toyota Hilux", "VW Gol Trend", "Fiat Cronos", "Ford Ranger"],
+        "Vencimiento": ["2026-03-30", "2026-04-10", "2026-04-15", "2026-03-25", "2026-05-01"],
+        "Estado": ["VENCIDO", "AL DÍA", "AL DÍA", "VENCIDO", "AL DÍA"],
+        "Saldo (USD)": [450, 0, 0, 320, 0]
+    }
+    df = pd.DataFrame(data)
+    # Link de WhatsApp dinámico
+    def link_wa(fila):
+        msg = f"CRM Senna Informa: Estimado {fila['Cliente']}, le recordamos que su cuota del {fila['Vehículo']} está {fila['Estado']}. Saldo: ${fila['Saldo (USD)']}. Saludos."
+        return f"https://wa.me/59899000000?text={urllib.parse.quote(msg)}"
+    df["WhatsApp"] = df.apply(link_wa, axis=1)
+    return df
+
+df = cargar_datos()
 
 # 3. PANTALLA DE LOGIN
 if not st.session_state["logueado"]:
-    _, col_centro, _ = st.columns([1, 1.5, 1])
-    with col_centro:
+    _, col, _ = st.columns([1, 1.5, 1])
+    with col:
         st.write("#")
         st.markdown("<h1 style='text-align: center; color: #55acee;'>🏎️ CRM SENNA 2026</h1>", unsafe_allow_html=True)
-        with st.form("login_form"):
-            user = st.text_input("Usuario")
-            password = st.text_input("Contraseña", type="password")
+        with st.form("login"):
+            u = st.text_input("Usuario")
+            p = st.text_input("Contraseña", type="password")
             if st.form_submit_button("INGRESAR"):
-                if user == "Leo" and password == "Senna2026":
+                if u == "Leo" and p == "Senna2026":
                     st.session_state["logueado"] = True
                     st.rerun()
-                else:
-                    st.error("Credenciales incorrectas")
+                else: st.error("Acceso Denegado")
 
-# 4. SISTEMA COMPLETO (Solo si está logueado)
+# 4. SISTEMA ACTIVO
 else:
-    # --- BARRA LATERAL (Sidebar) ---
-    # Colocamos el menú aquí para forzar que aparezca siempre
+    # --- MENÚ LATERAL ---
     with st.sidebar:
-        try:
-            st.image("logo.png", use_container_width=True)
-        except:
-            st.markdown("<h2 style='color:#55acee; text-align:center;'>SENNA</h2>", unsafe_allow_html=True)
-        
+        st.title("SENNA")
         st.markdown("### 🛠️ MENÚ PRINCIPAL")
         opcion = st.radio("Módulos del Sistema:", [
             "📊 Tablero de Control", 
@@ -77,47 +63,57 @@ else:
         if st.button("🚪 Cerrar Sesión"):
             st.session_state["logueado"] = False
             st.rerun()
-        st.info("Conectado como: Leo")
 
     # --- CONTENIDO CENTRAL ---
-    st.markdown('<div class="titulo-central">CRM SENNA 2026</div>', unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #8899A6;'>Sistema de Gestión Automotriz Profesional</p>", unsafe_allow_html=True)
-    st.write("---")
-
-    # Datos demo para que la tabla no esté vacía
-    data = {
-        "Cliente": ["Federico Rossi", "María Gonzalez", "Juan Castro", "Ana Ledesma", "Roberto Peña"],
-        "Vehículo": ["Mercedes Benz A200", "Toyota Hilux", "VW Gol Trend", "Fiat Cronos", "Ford Ranger"],
-        "Vencimiento": ["2026-03-30", "2026-04-10", "2026-04-15", "2026-03-25", "2026-05-01"],
-        "Estado": ["VENCIDO", "AL DÍA", "AL DÍA", "VENCIDO", "AL DÍA"],
-        "Saldo (USD)": [450, 0, 0, 320, 0]
-    }
-    df = pd.DataFrame(data)
+    st.markdown(f"<h1 style='text-align: center;'>CRM SENNA - {opcion.upper()}</h1>", unsafe_allow_html=True)
 
     if opcion == "📊 Tablero de Control":
         c1, c2, c3 = st.columns(3)
-        with c1: st.markdown('<div class="card"><h3 style="color:#8899A6">EN MORA</h3><h2 style="color:#ff4b4b">5</h2><p>USD 2.210</p></div>', unsafe_allow_html=True)
-        with c2: st.markdown('<div class="card"><h3 style="color:#8899A6">A COBRAR</h3><h2 style="color:#55acee">4</h2><p>USD 1.850</p></div>', unsafe_allow_html=True)
-        with c3: st.markdown('<div class="card"><h3 style="color:#8899A6">TOTAL CARTERA</h3><h2>20</h2><p>USD 15.400</p></div>', unsafe_allow_html=True)
-        st.subheader("📈 Rendimiento Semanal")
-        st.line_chart({"Cobros": [10, 25, 15, 30]})
+        c1.metric("EN MORA", "5 Clientes", "USD 2.210")
+        c2.metric("A COBRAR", "4 Clientes", "USD 1.850")
+        c3.metric("TOTAL CARTERA", "20 Registros", "USD 15.400")
+        st.write("---")
+        st.subheader("📋 Vista General de Cartera")
+        st.dataframe(df[["Cliente", "Vehículo", "Estado", "Saldo (USD)"]], use_container_width=True, hide_index=True)
 
     elif opcion == "💰 Gestión de Cobros":
-        st.markdown("### 📋 Cartera de Clientes")
-        def color_estado(val):
-            if val == "VENCIDO": return 'background-color: #701010; color: white'
-            if val == "AL DÍA": return 'background-color: #155123; color: white'
-            return ''
-        
+        st.subheader("💸 Lista de Cobranza Activa")
+        # Tabla con botón de WhatsApp funcional
         st.dataframe(
-            df.style.map(color_estado, subset=['Estado']),
-            use_container_width=True, hide_index=True
+            df, 
+            use_container_width=True, 
+            hide_index=True,
+            column_config={"WhatsApp": st.column_config.LinkColumn("Notificar", display_text="📲 Enviar WA")}
         )
 
+    elif opcion == "🔍 Buscador Inteligente":
+        st.subheader("🔍 Localización rápida de fichas")
+        busqueda = st.text_input("Ingresa nombre del cliente o vehículo:", placeholder="Ej: Federico")
+        
+        if busqueda:
+            resultado = df[df['Cliente'].str.contains(busqueda, case=False) | df['Vehículo'].str.contains(busqueda, case=False)]
+            if not resultado.empty:
+                for _, r in resultado.iterrows():
+                    with st.expander(f"👤 FICHA: {r['Cliente']}"):
+                        st.write(f"**Vehículo:** {r['Vehículo']}")
+                        st.write(f"**Estado de Cuenta:** {r['Estado']}")
+                        st.write(f"**Saldo Pendiente:** ${r['Saldo (USD)']}")
+                        st.write(f"**Vencimiento:** {r['Vencimiento']}")
+                        st.markdown(f"[📲 Enviar Recordatorio de Pago]({r['WhatsApp']})")
+            else:
+                st.warning("No se encontraron resultados.")
+
+    elif opcion == "📄 Documentos y PDF":
+        st.subheader("📄 Generación de Recibos y Contratos")
+        cliente_sel = st.selectbox("Selecciona el cliente para el documento:", df["Cliente"])
+        tipo_doc = st.radio("Tipo de documento:", ["Recibo de Pago", "Estado de Cuenta", "Promesa de Compraventa"])
+        
+        if st.button(f"Generar {tipo_doc}"):
+            datos_c = df[df["Cliente"] == cliente_sel].iloc[0]
+            st.success(f"¡{tipo_doc} generado con éxito!")
+            # Aquí iría la descarga del PDF (Simulado para que no rompa sin fpdf instalado)
+            st.info(f"Descargando archivo: {tipo_doc}_{cliente_sel}.pdf")
+
     elif opcion == "📍 Mapa de Cartera":
-        st.markdown("### 📍 Ubicación de Clientes (Paysandú)")
-        map_data = pd.DataFrame({
-            'lat': [-32.31, -32.32, -32.30],
-            'lon': [-58.08, -58.07, -58.09]
-        })
-        st.map(map_data)
+        st.subheader("📍 Geolocalización de Deudores (Paysandú)")
+        st.map(df.rename(columns={'lat': 'latitude', 'lon': 'longitude'}))
