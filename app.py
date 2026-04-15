@@ -1,27 +1,51 @@
 import streamlit as st
 from PIL import Image
 
-# 1. Configuración de la página (esto siempre debe ir primero)
-st.set_page_config(
-    page_title="CRM SENNA - 2026",
-    page_icon="🏎️",
-    layout="wide"
-)
+# Configuración de página
+st.set_page_config(page_title="CRM SENNA - Acceso", page_icon="🏎️", layout="centered")
 
-# 2. Cargar y mostrar el logo
-try:
-    # Usamos el nombre exacto que aparece en tu GitHub
-    logo = Image.open('logocrm2026jpg.jpg')
+# --- FUNCION DE LOGIN ---
+def login():
+    st.markdown("<h2 style='text-align: center;'>🔒 Control de Acceso</h2>", unsafe_allow_html=True)
     
-    # Creamos columnas para centrar el logo y que no ocupe toda la pantalla
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
+    with st.form("login_form"):
+        usuario = st.text_input("Usuario")
+        clave = st.text_input("Contraseña", type="password")
+        submit = st.form_submit_button("Ingresar al Sistema")
+        
+        if submit:
+            # Aquí puedes cambiar 'admin' y '1234' por lo que tú quieras
+            if usuario == "Leo" and clave == "Senna2026":
+                st.session_state["logueado"] = True
+                st.rerun()
+            else:
+                st.error("Credenciales incorrectas")
+
+# --- LÓGICA DE NAVEGACIÓN ---
+if "logueado" not in st.session_state:
+    st.session_state["logueado"] = False
+
+if not st.session_state["logueado"]:
+    # Mostramos el logo también en el login para que se vea bien
+    try:
+        logo = Image.open('logocrm2026.png')
         st.image(logo, use_container_width=True)
-except:
-    st.error("No se pudo cargar el logo. Verifica que el nombre sea exacto.")
+    except:
+        pass
+    login()
+else:
+    # --- CONTENIDO DEL CRM (Solo si está logueado) ---
+    st.sidebar.button("Cerrar Sesión", on_click=lambda: st.session_state.update({"logueado": False}))
+    
+    try:
+        logo = Image.open('logocrm2026.png')
+        st.image(logo, use_container_width=True)
+    except:
+        st.warning("Sube 'logocrm2026.png' a GitHub para ver el logo.")
 
-# 3. Título y separador
-st.markdown("---")
-st.title("Sistema de Gestión Inteligente")
-
-# Aquí continúa tu código actual...
+    st.markdown("---")
+    st.title("🚀 Sistema de Gestión Inteligente - Automotora")
+    st.write(f"Bienvenido al panel de control, **{st.session_state.get('user', 'Leo')}**.")
+    
+    # Aquí va el resto de tu código de ventas, stock, etc.
+    st.info("Plataforma Nivel 2026 activada.")
